@@ -143,11 +143,12 @@ object OperateMain extends Constants {
 
         if (name == "10291" || name == "10292" || name == "10290") { //只保留这次想要的数据
           println(str)
-          val array = str.getJSONArray("data")
-          val size = array.size()
+
           name match {
             //送祝福
             case "10292" => {
+              val array = str.getJSONArray("data")
+              val size = array.size()
               for (i <- 0 until size) {
                 val data = array.get(i).asInstanceOf[JSONObject]
                 val school_id = data.getString("schoolId")
@@ -197,8 +198,8 @@ object OperateMain extends Constants {
             }
             //家长端访问
             case "10291" => {
-              for (i <- 0 until size) {
-                val data = array.get(i).asInstanceOf[JSONObject]
+
+                val data = str.getJSONObject("data")
                 val school_id = data.getString("schoolId")
                 val student_id = data.getString("studentId")
                 val shareMode = data.getString("shareMode")
@@ -245,14 +246,13 @@ object OperateMain extends Constants {
                   sharenum.setString(4, time)
                   sharenum.addBatch()
                 }
-              }
+
             }
 
             //教师端访问
             case "10290" => {
 
-              for (i <- 0 until size) {
-                val data = array.get(i).asInstanceOf[JSONObject]
+                val data = str.getJSONObject("data")
                 val school_id = data.getString("schoolId")
                 val teacher_id = data.getString("teacherId")
                 val userInfo = getUserInfo(teacher_id.toInt)
@@ -279,7 +279,7 @@ object OperateMain extends Constants {
                 teachernum.addBatch()
               }
 
-            }
+
 
             case _ => {}
 
