@@ -50,7 +50,7 @@ object OperateMain extends Constants {
     //将学校名信息加载到内存中
     val quschoolSql = "select school_id ,school_name  from fact_teacher_info GROUP BY school_id  "
     val results2: ResultSet = MysqlUtils.select1(quschoolSql)
-    while (results1.next()) {
+    while (results2.next()) {
       val school_id = results2.getInt(1)
       val school_name = results2.getString(2)
       schoolNameMap += (school_id -> school_name)
@@ -142,7 +142,7 @@ object OperateMain extends Constants {
 
 
         if (name == "10291" || name == "10292" || name == "10290") { //只保留这次想要的数据
-          println(str)
+          //println(str)
 
           name match {
             //送祝福
@@ -304,14 +304,7 @@ object OperateMain extends Constants {
       val count9 = teachernum.executeBatch // 教师访问人数
 
       println("祝福语信息插入了" + count1.length + "条数据")
-      println("祝福语内容插入了" + count2.length + "条数据")
-      println("祝福语人数插入了" + count3.length + "条数据")
-      println("家长访问量插入了" + count4.length + "条数据")
-      println("家长问人数插入了" + count5.length + "条数据")
-      println("分享访问量插入了" + count6.length + "条数据")
-      println("分享问人数插入了" + count7.length + "条数据")
-      println("教师访问量插入了" + count8.length + "条数据")
-      println("教师问人数插入了" + count9.length + "条数据")
+
 
 
     } catch {
@@ -321,8 +314,6 @@ object OperateMain extends Constants {
       }
     }
   }
-
-
 
   //获取用户信息
   def getUserInfo(userId: Int): JSONObject = {
@@ -406,10 +397,10 @@ object OperateMain extends Constants {
 
 
   //获取学校信息
-  def getSchoolName(userId: Int): String = {
-    var School_name = schoolNameMap.getOrElse(userId, "")
+  def getSchoolName(schoolId: Int): String = {
+    var School_name = schoolNameMap.getOrElse(schoolId, "")
     if (School_name == "") {
-      val quModelSql = "select school_id ,school_name  from fact_teacher_info where school_id=" + userId + "  GROUP BY school_id"
+      val quModelSql = "select school_id ,school_name  from fact_teacher_info where school_id=" + schoolId + "  GROUP BY school_id"
       val results1: ResultSet = MysqlUtils.select1(quModelSql)
       while (results1.next()) {
         School_name = results1.getString(2)
