@@ -84,17 +84,13 @@ object UserServerMain extends Constants{
 				try{
 					var nginxJson: JSONObject=JSON.parseObject("{}")
 					val nginxStr: String = record.value
-				//	println("解析前的数据"+record.value)
 					if((nginxStr.contains("com.xh.zhitongyunstu")||nginxStr.contains("com.xh.zhitongyuntch") ||
 							nginxStr.contains("com.xuehai.response_launcher_teacher")||nginxStr.contains("com.xuehai.launcher"))
 						  &&(nginxStr.contains("INSTALLED")||nginxStr.contains("UPGRADED"))) {
 						nginxJson = nginxParse(nginxStr)
 					}
-				//	println("解析后的数据"+nginxJson)
 
 					if(nginxJson.size()>0){
-						//val id=nginxJson.getString("userId")+nginxJson.getString("packageName")+nginxJson.getString("changeAt")
-						//val insertRequest = ESUtils.insertRequestFunc1("app_service_"+LocalDate.now(), DetailType, nginxJson,id)
 						val insertRequest = ESUtils.insertRequestFunc("app_service_"+LocalDate.now(), DetailType, nginxJson)
 						nginxRequestList.append(insertRequest)
 					}

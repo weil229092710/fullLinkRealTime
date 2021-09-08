@@ -24,6 +24,12 @@ object Utils extends Constants{
 		else x.toString
 	}
 
+
+	def null2Int(x: Any): Int ={
+		if(x == null) return 0
+		else x.toString.toInt
+	}
+
 	def null2Double(x: Any): Double ={
 		try{
 			x.toString.replace("MB", "").toDouble
