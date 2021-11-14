@@ -145,6 +145,26 @@ object DateUtil {
         dateFormat.format(date)
     }
 
+    def long2Date(x: Long): String = {
+        import java.text.SimpleDateFormat
+
+        val timeStamp: Long = System.currentTimeMillis //获取当前时间戳
+        val sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        val sd: String = sdf.format(x) // 时间戳转换成时间
+        //System.out.println("格式化结果：" + sd)
+        sd
+    }
+
+
+//日期转化成时间戳
+    def Date2Long(x: String): Long = {
+
+        val format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        val d = format.parse(x);// 日期转换为时间戳
+        d.getTime
+    }
+
+
     def main(args: Array[String]) {
 
         val date = new Date(1561346915835L)
@@ -153,7 +173,8 @@ object DateUtil {
         df.setTimeZone(tz)
         val nowAsISO = df.format(date)
 
-        println(getDateStr())
+        println(Date2Long("2021-11-04 09:32:03"))
+
 
     }
 

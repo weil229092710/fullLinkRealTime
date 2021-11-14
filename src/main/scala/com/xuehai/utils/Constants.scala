@@ -21,6 +21,7 @@ trait Constants {
 	val userServerTopic = PropertiesUtil.getKey("userServerTopic")
   val OperateTopic = PropertiesUtil.getKey("OperateTopic")
   val mysql_binlog = PropertiesUtil.getKey("topicName")
+	val platLoginTopic = PropertiesUtil.getKey("platLoginTopic")
 
   val kafkaParams: Map[String, Object] = Map(
 		"bootstrap.servers" -> brokerList,
@@ -47,7 +48,7 @@ trait Constants {
 	val MAX_WAIT = 10000000
 	val TIMEOUT = 10000000
 	val TEST_ON_BORROW = true
-
+	val  start_time=1633708800000L
 
 
 	/**
@@ -140,6 +141,15 @@ trait Constants {
 
 
 
+	val Host5 = PropertiesUtil.getKey("Host5")
+	val Port5 = PropertiesUtil.getKey("Port5")
+	val User5 = PropertiesUtil.getKey("User5")
+	val Password5 = PropertiesUtil.getKey("Password5")
+	val DB5 = PropertiesUtil.getKey("DB5")
+	val Url5 = "jdbc:mysql://%s:%s/%s?autoReconnect=true&characterEncoding=utf8".format(Host5, Port5, DB5)
+
+
+
 
 	/**
 	  * 钉钉机器人
@@ -205,10 +215,10 @@ trait Constants {
 	//val mongoUrl="mongodb://%s:%s/%s.%s".format(mongoHost, mongoPort, mongoDB, mongoCollection)
 
 	// 生产环境
-	//val mongoUrl="mongodb://%s:%s@%s:%s/%s.%s".format(mongoUser, mongoPassword, mongoHost, mongoPort, mongoDB, mongoCollection)
+	val mongoUrl="mongodb://%s:%s@%s:%s/%s.%s".format(mongoUser, mongoPassword, mongoHost, mongoPort, mongoDB, mongoCollection)
 
 	// 测试环境：需要认证
-	val mongoUrl= "mongodb://%s:%s@%s:%s/%s.%s?authSource=admin".format(mongoUser, mongoPassword, mongoHost, mongoPort, mongoDB, mongoCollection)
+	//val mongoUrl= "mongodb://%s:%s@%s:%s/%s.%s?authSource=admin".format(mongoUser, mongoPassword, mongoHost, mongoPort, mongoDB, mongoCollection)
 
 	// 开发环境：无需认证，且版本低于3.0
 	//val mongoUrl= "mongodb://%s:%s/%s.%s".format(mongoHost, mongoPort, mongoDB, mongoCollection)

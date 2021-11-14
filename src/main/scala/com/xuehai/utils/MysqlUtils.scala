@@ -10,7 +10,8 @@ object MysqlUtils extends Constants{
     var conn1: Connection = null
     var conn2: Connection = null
      var conn3:Connection = null
-  var conn4:Connection = null
+    var conn4:Connection = null
+    var conn5:Connection = null
     def getMysqlConnection() ={
         try{
             Class.forName("com.mysql.jdbc.Driver")
@@ -91,6 +92,33 @@ object MysqlUtils extends Constants{
 
   }
 
+
+  def getMysqlConnection5() ={
+    try{
+      Class.forName("com.mysql.jdbc.Driver")
+      conn5 = DriverManager.getConnection(Url5, User5, Password5)
+      LOG.info("mysql connection success!")
+    }catch {
+      case e: Exception => {
+        LOG.error("从mysql connection failed！！！！", e)
+      }
+    }
+
+  }
+
+
+  def select5(sql: String): ResultSet ={
+    var result: ResultSet = null
+    try{
+      result = conn5.createStatement().executeQuery(sql)
+    }catch {
+      case e: Exception => {
+        getMysqlConnection5()
+        result = conn5.createStatement().executeQuery(sql)
+      }
+    }
+    result
+  }
 
 
   def select4(sql: String): ResultSet ={

@@ -10,13 +10,16 @@ import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.MongoDBObject
 import com.mongodb.casbah.MongoCollection
 import com.xuehai.utils._
+import com.xuehai.utils.test1.{getRepairTime, isRepireTime}
 import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks
 
 object YjHighRiskMain extends Constants {
+
 
   var userInfoMap = new mutable.HashMap[Int, JSON]()
 
@@ -102,9 +105,10 @@ object YjHighRiskMain extends Constants {
   val dataSource: BasicDataSource = new BasicDataSource
   var conn: Connection = getConnection(dataSource)
 
-  val InsertStmtStatus = conn.prepareStatement("INSERT INTO yj_risk_detail (equipment_number, user_id, class_name, user_name, school_id, school_name, class_id, equipment_type, account, label, detail, label_type,  event_time, report_time,risk_level) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,3)")
+  val InsertStmtStatus = conn.prepareStatement("INSERT INTO yj_risk_detail (equipment_number, user_id, class_name, user_name, school_id, school_name, class_id, equipment_type, account, label, detail, label_type,  event_time, report_time,risk_level,device_bind_time,package_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
   val InsertMontorStatus = conn.prepareStatement("INSERT INTO yj_risk_detail (equipment_number, user_id, user_name, school_id, school_name, class_id, class_name, equipment_type, account, label, detail, label_type, event_time, report_time, platform_version, mdm_version, os_display,risk_level) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,3)")
   val Insertrecord = conn.prepareStatement("INSERT INTO yj_monitor_record ( deviceId, CONTROL_RESTORE_FACTORY, CONTROL_USB_DEBUG, CONTROL_USB_MTP, CONTROL_EXTERNAL_SDCARD_ENABLED, CONTROL_MULTI_USER_EXIST, create_time) VALUES (?,?,?,?,?,?,?)")
+  val InsertUnstallDetail = conn.prepareStatement("INSERT INTO yj_risk_uninstall_detail ( school_id, school_name, class_id, class_name, user_id, user_name, account, equipment_number, detail, install_time, update_time, bind_time, event_time,scene) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
 
 
   def nginxStart(records: ConsumerRecords[String, String]): Unit = {
@@ -116,7 +120,7 @@ object YjHighRiskMain extends Constants {
 
         try {
           val json: JSONObject = JSON.parseObject(record.value())
-          //println(json)
+          println(json)
           val table = json.getString("ns")
           if ((table == "AppService.user_monitor_log" || table == "AppService.user_app_changes_logs")) {
             //  if ((table == "AppService.user_monitor_log" )) {
@@ -317,20 +321,30 @@ object YjHighRiskMain extends Constants {
                 val packageName=jSONObject.getString("packageName")
                 val  type1= jSONObject.getString("type")
                 val  userId= jSONObject.getInteger("userId")
-                if(type1=="INSTALLED"&&(!appSet.contains(packageName))&&(!getWatchApp(packageName))&&(!getWatchAccount(userId))) {
+               // if(type1=="INSTALLED"&&(!appSet.contains(packageName))&&(!getWatchApp(packageName))&&(!getWatchAccount(userId))) {
+                  if((type1=="INSTALLED"||type1=="UPGRADED")&&(!appSet.contains(packageName))&&(!getWatchApp(packageName))&&(!getWatchAccount(userId))) {
 
-                  //  if(type1=="INSTALLED"&&(!getWatchApp(packageName))&&(!getWatchAccount(userId))) {
-
+                 // println(jSONObject)
                   val deviceId = jSONObject.getString("deviceId")
 
-                  val sModel = Utils.null2Str(getSmodel(deviceId))
-                  val time = Utils.null2Str(getBindTime(deviceId)) //平台安装时间
+                  //val sModel = Utils.null2Str(getSmodel(deviceId))
+                 // val time = Utils.null2Str(getBindTime(deviceId)) //平台安装时间
                   val createdAt = jSONObject.getString("createdAt")
-                  val eventTime = Utc2Local.UTCToCST(createdAt)
+                  val changeAt =jSONObject.getLong("changeAt")
+                  val changeTime = DateUtil.long2Date(changeAt)
 
-                  if (time!=""&&time < eventTime) {
-                    val packageName = jSONObject.getString("packageName")
+                  //根据设备号获取最新的用户信息
+                  val deviceInfo = getDeviceInfo(deviceId)
+                  val sModel = deviceInfo.getString("smodel")
+                  val tcreateTime = deviceInfo.getString("tcreateTime")
+                  val userid = deviceInfo.getString("user_id")
+                  if (userid!=""){
+                  val time = getOldBindTimeByDeviceIdAndUserId(deviceId,userid.toString) //平台首次安装时间
+
                     val appName = jSONObject.getString("appName")
+                  if (time!=""&&time < changeTime) {
+                    val packageName = jSONObject.getString("packageName")
+
                     val nObject = getUserInfo(userId)
                     val userName = nObject.getString("userName")
                     val schoolId = nObject.getString("schoolId")
@@ -341,31 +355,113 @@ object YjHighRiskMain extends Constants {
                     val iUserType = nObject.getInteger("iUserType")
                     if (iUserType == 1) {
                       // println(json)
-                      val userid=getUserIdByDeviceid(deviceId)
-                      val history=getHistory(userid)
+                      //val userid=getUserIdByDeviceid(deviceId)
+                      val history=getHistory(userid.toInt)
                       val istatus=getIstatus(schoolId.toInt)
-                      if(userid==userId&&history==0&&istatus==2) {
-                        InsertStmtStatus.setString(1, deviceId)
-                        InsertStmtStatus.setInt(2, userId)
-                        InsertStmtStatus.setString(3, claass_name)
-                        InsertStmtStatus.setString(4, userName)
-                        InsertStmtStatus.setString(5, schoolId)
-                        InsertStmtStatus.setString(6, schoolName)
-                        InsertStmtStatus.setString(7, claass_id)
-                        InsertStmtStatus.setString(8, sModel)
-                        InsertStmtStatus.setString(9, account)
-                        InsertStmtStatus.setString(10, "应用预警")
-                        InsertStmtStatus.setString(11, "安装" + appName + "应用")
-                        InsertStmtStatus.setInt(12, 6)
-                        InsertStmtStatus.setString(13, eventTime)
-                        InsertStmtStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
-                        InsertStmtStatus.execute()
+                      if(userid.toInt==userId&&history==0&&istatus==2) {
+                        val eventTime = Utc2Local.UTCToCST(createdAt)
+                        //添加维修场景和刷动态码场景
+                        val code_time=getBrushCodeTime(deviceId)
+                        //大于刷机码时间的最近一次登录时间
+                        val plat_login_time=getPlatLoginTime(deviceId,userId,code_time)
+                        val bool = isNotCodeTime(code_time, changeTime, plat_login_time)
+
+                        //判断是否在维修期间
+                        val tuples1: ArrayBuffer[(BigInt, BigInt)] = getRepairTime(deviceId)
+                        val isRePairTime = isRepireTime(tuples1, changeTime)
+
+                        if(bool==false&&isRePairTime==false) {
+                          val lastBool=isLastDate(changeAt)
+
+                          InsertStmtStatus.setString(1, deviceId)
+                          InsertStmtStatus.setInt(2, userId)
+                          InsertStmtStatus.setString(3, claass_name)
+                          InsertStmtStatus.setString(4, userName)
+                          InsertStmtStatus.setString(5, schoolId)
+                          InsertStmtStatus.setString(6, schoolName)
+                          InsertStmtStatus.setString(7, claass_id)
+                          InsertStmtStatus.setString(8, sModel)
+                          InsertStmtStatus.setString(9, account)
+                          InsertStmtStatus.setString(10, "应用预警")
+                          InsertStmtStatus.setString(11, "安装" + appName + "应用")
+                          InsertStmtStatus.setInt(12, 6)
+                          InsertStmtStatus.setString(13, changeTime)
+                          InsertStmtStatus.setString(14, eventTime)
+                          InsertStmtStatus.setInt(15,    (if (lastBool == true) 2 else 3) )
+                          InsertStmtStatus.setString(16, time.replace(".0", "")) //首次绑定时间
+                          InsertStmtStatus.setString(17, packageName) //包名
+                          InsertStmtStatus.execute()
+                        }
+                        else {
+                          InsertUnstallDetail.setString(1,schoolId)
+                          InsertUnstallDetail.setString(2,schoolName)
+                          InsertUnstallDetail.setString(3,claass_id)
+                          InsertUnstallDetail.setString(4,claass_name)
+                          InsertUnstallDetail.setInt(5,userId)
+                          InsertUnstallDetail.setString(6,userName)
+                          InsertUnstallDetail.setString(7,account)
+                          InsertUnstallDetail.setString(8,deviceId)
+                          InsertUnstallDetail.setString(9,"安装" + appName )
+                          InsertUnstallDetail.setString(10,"")
+                          InsertUnstallDetail.setString(11,changeTime)
+                          InsertUnstallDetail.setString(12,time.replace(".0", ""))
+                          InsertUnstallDetail.setString(13,new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                          InsertUnstallDetail.setInt(14, (if (bool == true) 2 else 3))
+                          InsertUnstallDetail.execute()
+
+                        }
                       }
                     }
                   }
+
+
+                    //绑定时间大于
+
+                    if (time!=""&&time > changeTime) {
+
+                      val nObject = getUserInfo(userId)
+                      val userName = nObject.getString("userName")
+                      val schoolId = nObject.getString("schoolId")
+                      val schoolName = nObject.getString("schoolName")
+                      val claass_id = nObject.getString("claass_id")
+                      val claass_name = nObject.getString("claass_name")
+                      val account = nObject.getString("account")
+                      val iUserType = nObject.getInteger("iUserType")
+                      if (iUserType == 1) {
+                        val history=getHistory(userid.toInt)
+                        val istatus=getIstatus(schoolId.toInt)
+                        if(userid.toInt==userId&&history==0&&istatus==2) {
+                         InsertUnstallDetail.setString(1,schoolId)
+                          InsertUnstallDetail.setString(2,schoolName)
+                          InsertUnstallDetail.setString(3,claass_id)
+                          InsertUnstallDetail.setString(4,claass_name)
+                          InsertUnstallDetail.setInt(5,userId)
+                          InsertUnstallDetail.setString(6,userName)
+                          InsertUnstallDetail.setString(7,account)
+                          InsertUnstallDetail.setString(8,deviceId)
+                          InsertUnstallDetail.setString(9,"安装" + appName )
+                          InsertUnstallDetail.setString(10,"")
+                          InsertUnstallDetail.setString(11,changeTime)
+                          InsertUnstallDetail.setString(12,time.replace(".0", ""))
+                          InsertUnstallDetail.setString(13,new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                          InsertUnstallDetail.setInt(14,1)
+                          InsertUnstallDetail.execute()
+                        }
+                      }
+                    }
+
+
+                    //绑定时间大于
+
+
+
+
+
+
+
                 }
 
-              }
+              }}
 
 
               case _ => {}
@@ -377,7 +473,7 @@ object YjHighRiskMain extends Constants {
         } catch {
           case e: Exception => {
             e.printStackTrace()
-            println(record)
+            println(record+"该条平板托管数据有问题")
           }
         }
       }
@@ -494,6 +590,11 @@ object YjHighRiskMain extends Constants {
           obj.put("createdAt", createdAt)
         }
 
+        if (data.getString("Name") == "changeAt") {
+          val changeAt = data.getString("Value")
+          obj.put("changeAt", changeAt)
+        }
+
       }
       if (table == "AppService.user_monitor_log" && sql_type == "i") {
         if (data.getString("Name") == "userId") {
@@ -572,6 +673,17 @@ object YjHighRiskMain extends Constants {
       }
     }
     sModel
+  }
+
+
+  //是否是一个月之前的安装数据
+  def isLastDate( changeTime: Long): Boolean = {
+    var bool: Boolean = false
+    //当刷机码为空，且登录平台时间为空或者登录时间大于安装时间
+    if(changeTime-start_time<0){
+      bool=true
+    }
+    bool
   }
 
 
@@ -677,6 +789,119 @@ object YjHighRiskMain extends Constants {
 
 
 
+
+
+
+  //根据设备获取信息
+  def getDeviceInfo(deviceId: String): JSONObject = {
+    val obj: JSONObject = JSON.parseObject("{}")
+    var smodel = ""
+    var tcreateTime = ""
+    var user_id = ""
+    val quUserInfoSql = "select sdevicenumber device_id,  smodel,iuserid user_id,  date_format(tcreatedate, '%Y-%m-%d %H:%i:%s')  from  XHSys_AccountDeviceLocked  a\nwhere bdelete=0 and  sdevicenumber=  '" + deviceId + "'" +" order by  tcreatedate desc limit 1"
+    val results2: ResultSet = MysqlUtils.select4(quUserInfoSql)
+    while (results2.next()) {
+      smodel = results2.getString(2)
+      tcreateTime = results2.getString(4)
+      user_id = results2.getString(3)
+    }
+    obj.put("smodel", smodel)
+    obj.put("tcreateTime", tcreateTime)
+    obj.put("user_id", user_id)
+    obj
+  }
+
+
+  //通过设备id和用户id获取旧的设备绑定时间
+  def getOldBindTimeByDeviceIdAndUserId(deviceId: String, userId: String): String = {
+    var time = ""
+    val quModelSql = " select   date_format(tcreatedate, '%Y-%m-%d %H:%i:%s') AS createdAt  from  XHSys_AccountDeviceLocked a where   a.sdevicenumber= '" + deviceId + "'" + " and iuserid= ' " + userId + "'" + " ORDER BY tcreatedate asc  limit 1"
+    val results1: ResultSet = MysqlUtils.select4(quModelSql)
+    while (results1.next()) {
+      time = results1.getString(1)
+    }
+
+    time
+  }
+
+
+
+  //通过设备id获取扫码时间
+  def getBrushCodeTime(deviceId: String): String = {
+    var time = ""
+    val quModelSql = "SELECT   date_format(used_date, '%Y-%m-%d %H:%i:%s') AS  used_date from  brush_code where device_id =  '" + deviceId + "'"  + " ORDER BY used_date desc limit 1"
+    val results1: ResultSet = MysqlUtils.select5(quModelSql)
+    while (results1.next()) {
+      time = results1.getString(1)
+    }
+
+    time
+  }
+
+
+//根据设备号和用户id和时间查询出扫码后最近一次登录智通云平台的数据
+  def getPlatLoginTime(deviceId: String, userId: Int,login_time:String): String = {
+    var time = ""
+    val quModelSql = " select  date_format(login_time, '%Y-%m-%d %H:%i:%s') AS  login_time  from   plat_login_device a where equipment_number= '" + deviceId + "'" +" and user_id=" +userId +" and  login_time> '" + login_time + "' " + "ORDER BY  login_time asc  limit 1 "
+    val results1: ResultSet = MysqlUtils.select3(quModelSql)
+    while (results1.next()) {
+      time = results1.getString(1)
+    }
+    time
+  }
+
+
+
+  //判断是否在刷机码时间
+  def isNotCodeTime(codeTime: String, changeTime: String,login_time:String): Boolean = {
+    var bool: Boolean = false
+    //当刷机码为空，且登录平台时间为空或者登录时间大于安装时间
+    if(codeTime!=""&&(codeTime<changeTime&&(login_time>changeTime||login_time==""))){
+      bool=true
+    }
+    bool
+  }
+
+
+
+
+  def getRepairTime(deviceId: String): ArrayBuffer[(BigInt, BigInt)] = {
+    val tuples: ArrayBuffer[(BigInt, BigInt)] = ArrayBuffer[(BigInt,BigInt)]()
+    val quModelSql = " SELECT a.start_time,a.end_time FROM yj_repair_time a where a.equipment_number= '" + deviceId + "'"
+    val results: ResultSet = MysqlUtils.select3(quModelSql)
+    while (results.next()) {
+      val   start_time: BigInt = BigInt(results.getLong(1))
+      val   end_time = BigInt(results.getLong(2))
+      val   timeT: (BigInt, BigInt) = (start_time,end_time)
+      tuples+=timeT
+    }
+    tuples
+  }
+
+
+
+
+  //判断是否在维修期间时间
+  def isRepireTime(turple:ArrayBuffer[(BigInt, BigInt)],change_time:String): Boolean = {
+    var bool: Boolean = false
+    val time: Long = DateUtil.Date2Long(change_time)
+    //遍历该设备维修数据,看安装时间在维修期间，或者维修未完成时end_time 等于0
+    val loop = new Breaks;
+    loop.breakable {
+      for (elem <- turple) {
+        if (time > elem._1 && (time < elem._2 || elem._2 == 0)) {
+          bool = true
+          loop.break;
+        }
+      }
+    }
+    bool
+  }
+
+
+
+
+
   //阿里云数据库连接信息
   def getConnection(dataSource: BasicDataSource): Connection = {
     dataSource.setDriverClassName("com.mysql.jdbc.Driver")
@@ -688,9 +913,15 @@ object YjHighRiskMain extends Constants {
     dataSource.setPassword(Password3) //数据库密码
 
     //设置连接池的一些参数
-    dataSource.setInitialSize(10)
+    dataSource.setInitialSize(20)
     dataSource.setMaxTotal(1004)
-    dataSource.setMinIdle(10)
+    dataSource.setMinIdle(30)
+    dataSource.setMaxWaitMillis(10000000)
+    dataSource.setDefaultReadOnly(false)
+    dataSource.setTestOnReturn(true)
+    dataSource.setTestOnBorrow(true)
+    dataSource.setTestWhileIdle(true)
+    dataSource.setValidationQuery("select 1")
     var con: Connection = null
     try {
       con = dataSource.getConnection

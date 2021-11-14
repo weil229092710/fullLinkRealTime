@@ -18,9 +18,9 @@ public class kafka_consumer {
     public static void kafka_consumer(){
         Properties props = new Properties();
         props.put("bootstrap.servers", brokerList);
-        props.put("group.id", "test-consumer-group-9024337834");
+        props.put("group.id", "test-consumer-group-9024333734834");
         props.put("enable.auto.commit", "false");
-        props.put("auto.offset.reset", "earliest");//latest  earliest
+        props.put("auto.offset.reset", "latest");//latest  earliest
 
         props.put("heartbeat.interval.ms", "120000");//2min
         props.put("session.timeout.ms", "300000");//5min
