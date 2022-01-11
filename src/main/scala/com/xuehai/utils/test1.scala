@@ -93,18 +93,19 @@ object test1 extends  Constants {
     //println(isRepireTime(tuples1, "2021-11-04 14:00:00"))
 
 
-     val aa=true
-     val bb=false
-     var cc=0
-    if(aa==false)  cc=3
+//     val aa=true
+//     val bb=false
+//     var cc=0
+//    if(aa==false)  cc=3
+//
+////   (if (bool == true) 2 else 3)
+//
+//
+//    println(isLastDate(1634572800000L))
+//    println(isLastDate(1633536000000L))
 
-//   (if (bool == true) 2 else 3)
 
-
-    println(isLastDate(1634572800000L))
-    println(isLastDate(1633536000000L))
-
-
+    println(getBrushCodeTime("R22J80064HM", "2021-06-09 13:51:30"))
 
   }
 
@@ -142,30 +143,6 @@ object test1 extends  Constants {
   }
 
 
-  def getBrushCode(deviceId: String): String = {
-    var time = ""
-    val quModelSql = "SELECT   date_format(used_date, '%Y-%m-%d %H:%i:%s') AS  used_date from  brush_code where device_id =  '" + deviceId + "'"  + " ORDER BY used_date desc limit 1"
-    val results1: ResultSet = MysqlUtils.select5(quModelSql)
-    while (results1.next()) {
-      time = results1.getString(1)
-    }
-
-    time
-  }
-
-
-
-  //通过设备id和用户id获取旧的设备绑定时间
-  def getPlatLoginTime(deviceId: String, userId: Int,code_time:String): String = {
-    var time = ""
-    val quModelSql = " select  date_format(login_time, '%Y-%m-%d %H:%i:%s') AS  login_time  from   plat_login_device a where equipment_number= '" + deviceId + "'" +" and user_id=" +userId +" and  login_time> '" + code_time + "' " + "ORDER BY  login_time asc  limit 1 "
-    val results1: ResultSet = MysqlUtils.select3(quModelSql)
-    while (results1.next()) {
-      time = results1.getString(1)
-    }
-
-    time
-  }
 
 
 
@@ -180,7 +157,29 @@ object test1 extends  Constants {
   }
 
 
+  def getBrushCodeTime(deviceId: String,change_time:String): String = {
+    var time = ""
+    val quModelSql = "SELECT   date_format(used_date, '%Y-%m-%d %H:%i:%s') AS  used_date from  brush_code where status=1 and  device_id =  '" + deviceId + "'" +" and  used_date< '" + change_time + "' " +  " ORDER BY used_date desc limit 1"
+    val results1: ResultSet = MysqlUtils.select5(quModelSql)
+    while (results1.next()) {
+      time = results1.getString(1)
+    }
 
+    time
+  }
+
+
+
+  //根据设备号和用户id和时间查询出扫码后最近一次登录智通云平台的数据
+  def getPlatLoginTime(deviceId: String, userId: Int,login_time:String): String = {
+    var time = ""
+    val quModelSql = " select  date_format(login_time, '%Y-%m-%d %H:%i:%s') AS  login_time  from   plat_login_device a where equipment_number= '" + deviceId + "'" +" and user_id=" +userId +" and  login_time> '" + login_time + "' " + "ORDER BY  login_time asc  limit 1 "
+    val results1: ResultSet = MysqlUtils.select3(quModelSql)
+    while (results1.next()) {
+      time = results1.getString(1)
+    }
+    time
+  }
 
 
 

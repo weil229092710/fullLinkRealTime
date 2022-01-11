@@ -10,7 +10,7 @@
 //import com.mongodb.casbah.Imports.MongoDBObject
 //import com.mongodb.casbah.MongoCollection
 //import com.xuehai.utils._
-//import com.xuehai.utils.test1.{getRepairTime, isRepireTime}
+//
 //import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
 //
 //import scala.collection.JavaConverters._
@@ -19,6 +19,7 @@
 //import scala.util.control.Breaks
 //
 //object YjHighRiskMain extends Constants {
+//
 //
 //  var userInfoMap = new mutable.HashMap[Int, JSON]()
 //
@@ -104,7 +105,7 @@
 //  val dataSource: BasicDataSource = new BasicDataSource
 //  var conn: Connection = getConnection(dataSource)
 //
-//  val InsertStmtStatus = conn.prepareStatement("INSERT INTO yj_risk_detail (equipment_number, user_id, class_name, user_name, school_id, school_name, class_id, equipment_type, account, label, detail, label_type,  event_time, report_time,risk_level,device_bind_time,package_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,3,?,?)")
+//  val InsertStmtStatus = conn.prepareStatement("INSERT INTO yj_risk_detail (equipment_number, user_id, class_name, user_name, school_id, school_name, class_id, equipment_type, account, label, detail, label_type,  event_time, report_time,risk_level,device_bind_time,package_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
 //  val InsertMontorStatus = conn.prepareStatement("INSERT INTO yj_risk_detail (equipment_number, user_id, user_name, school_id, school_name, class_id, class_name, equipment_type, account, label, detail, label_type, event_time, report_time, platform_version, mdm_version, os_display,risk_level) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,3)")
 //  val Insertrecord = conn.prepareStatement("INSERT INTO yj_monitor_record ( deviceId, CONTROL_RESTORE_FACTORY, CONTROL_USB_DEBUG, CONTROL_USB_MTP, CONTROL_EXTERNAL_SDCARD_ENABLED, CONTROL_MULTI_USER_EXIST, create_time) VALUES (?,?,?,?,?,?,?)")
 //  val InsertUnstallDetail = conn.prepareStatement("INSERT INTO yj_risk_uninstall_detail ( school_id, school_name, class_id, class_name, user_id, user_name, account, equipment_number, detail, install_time, update_time, bind_time, event_time,scene) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
@@ -119,7 +120,7 @@
 //
 //        try {
 //          val json: JSONObject = JSON.parseObject(record.value())
-//          println(json)
+//          //println(json)
 //          val table = json.getString("ns")
 //          if ((table == "AppService.user_monitor_log" || table == "AppService.user_app_changes_logs")) {
 //            //  if ((table == "AppService.user_monitor_log" )) {
@@ -329,7 +330,8 @@
 //                  //val sModel = Utils.null2Str(getSmodel(deviceId))
 //                  // val time = Utils.null2Str(getBindTime(deviceId)) //平台安装时间
 //                  val createdAt = jSONObject.getString("createdAt")
-//                  val changeTime = DateUtil.long2Date(jSONObject.getLong("changeAt"))
+//                  val changeAt =jSONObject.getLong("changeAt")
+//                  val changeTime = DateUtil.long2Date(changeAt)
 //
 //                  //根据设备号获取最新的用户信息
 //                  val deviceInfo = getDeviceInfo(deviceId)
@@ -369,6 +371,7 @@
 //                          val isRePairTime = isRepireTime(tuples1, changeTime)
 //
 //                          if(bool==false&&isRePairTime==false) {
+//                            val lastBool=isLastDate(changeAt)
 //
 //                            InsertStmtStatus.setString(1, deviceId)
 //                            InsertStmtStatus.setInt(2, userId)
@@ -384,8 +387,9 @@
 //                            InsertStmtStatus.setInt(12, 6)
 //                            InsertStmtStatus.setString(13, changeTime)
 //                            InsertStmtStatus.setString(14, eventTime)
-//                            InsertStmtStatus.setString(15, time.replace(".0", "")) //首次绑定时间
-//                            InsertStmtStatus.setString(16, packageName) //包名
+//                            InsertStmtStatus.setInt(15,    (if (lastBool == true) 2 else 3) )
+//                            InsertStmtStatus.setString(16, time.replace(".0", "")) //首次绑定时间
+//                            InsertStmtStatus.setString(17, packageName) //包名
 //                            InsertStmtStatus.execute()
 //                          }
 //                          else {
@@ -672,6 +676,17 @@
 //  }
 //
 //
+//  //是否是一个月之前的安装数据
+//  def isLastDate( changeTime: Long): Boolean = {
+//    var bool: Boolean = false
+//    //当刷机码为空，且登录平台时间为空或者登录时间大于安装时间
+//    if(changeTime-start_time<0){
+//      bool=true
+//    }
+//    bool
+//  }
+//
+//
 //
 //  def getHistory(user_id: Int): Int = {
 //
@@ -771,6 +786,8 @@
 //    }
 //
 //  }
+//
+//
 //
 //
 //
@@ -896,9 +913,15 @@
 //    dataSource.setPassword(Password3) //数据库密码
 //
 //    //设置连接池的一些参数
-//    dataSource.setInitialSize(10)
+//    dataSource.setInitialSize(20)
 //    dataSource.setMaxTotal(1004)
-//    dataSource.setMinIdle(10)
+//    dataSource.setMinIdle(30)
+//    dataSource.setMaxWaitMillis(10000000)
+//    dataSource.setDefaultReadOnly(false)
+//    dataSource.setTestOnReturn(true)
+//    dataSource.setTestOnBorrow(true)
+//    dataSource.setTestWhileIdle(true)
+//    dataSource.setValidationQuery("select 1")
 //    var con: Connection = null
 //    try {
 //      con = dataSource.getConnection

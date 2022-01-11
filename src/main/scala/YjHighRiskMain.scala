@@ -10,7 +10,7 @@ import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.MongoDBObject
 import com.mongodb.casbah.MongoCollection
 import com.xuehai.utils._
-import com.xuehai.utils.test1.{getRepairTime, isRepireTime}
+
 import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
 
 import scala.collection.JavaConverters._
@@ -120,7 +120,7 @@ object YjHighRiskMain extends Constants {
 
         try {
           val json: JSONObject = JSON.parseObject(record.value())
-          println(json)
+          //println(json)
           val table = json.getString("ns")
           if ((table == "AppService.user_monitor_log" || table == "AppService.user_app_changes_logs")) {
             //  if ((table == "AppService.user_monitor_log" )) {
@@ -140,7 +140,9 @@ object YjHighRiskMain extends Constants {
                 val osDisplay = jSONObject.getString("osDisplay")
                 val monitorItems = JSON.parseArray(jSONObject.getString("monitorItems"))
                 val createdDate = jSONObject.getLong("createdDate")
+                val reportDate = jSONObject.getLong("reportDate")
                 val time=Utc2Local.MilltoLocal(createdDate)
+                val report_time=Utc2Local.MilltoLocal(reportDate)
                 //用户维度信息
                 val nObject = getUserInfo(userId)
                 val iUserType=nObject.getInteger("iUserType")
@@ -156,8 +158,8 @@ object YjHighRiskMain extends Constants {
                   val class_name = nObject.getString("claass_name")
                   val account = nObject.getString("account")
 
-                  if ((!systemSet.contains(osDisplay)) && (!getWatchSystem(osDisplay)) && (!getWatchAccount(userId))) {
-                    //  if((!getWatchSystem(osDisplay))&&(!getWatchAccount(userId))){
+                 // if ((!systemSet.contains(osDisplay)) && (!getWatchSystem(osDisplay)) && (!getWatchAccount(userId))) {
+                      if((!getWatchSystem(osDisplay))&&(!getWatchAccount(userId))){
                     // println(json)
                     val userid=getUserIdByDeviceid(deviceId)
                     if(userid==userId) {
@@ -173,8 +175,9 @@ object YjHighRiskMain extends Constants {
                       InsertMontorStatus.setString(10, "系统版本异常")
                       InsertMontorStatus.setString(11, "当前系统版本" + osDisplay)
                       InsertMontorStatus.setInt(12, 6)
-                      InsertMontorStatus.setString(13, time)
-                      InsertMontorStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                      InsertMontorStatus.setString(13, report_time)
+                     // InsertMontorStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                      InsertMontorStatus.setString(14, time)
                       InsertMontorStatus.setString(15, platformVersion)
                       InsertMontorStatus.setString(16, mdmVersion)
                       InsertMontorStatus.setString(17, osDisplay)
@@ -210,8 +213,10 @@ object YjHighRiskMain extends Constants {
                           InsertMontorStatus.setString(10, value) //后面换成标签
                           InsertMontorStatus.setString(11, "") //系统异常详情不用展示
                           InsertMontorStatus.setInt(12, a)
-                          InsertMontorStatus.setString(13, time)
-                          InsertMontorStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                         // InsertMontorStatus.setString(13, time)
+                         // InsertMontorStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                          InsertMontorStatus.setString(13, report_time)
+                          InsertMontorStatus.setString(14, time)
                           InsertMontorStatus.setString(15, platformVersion)
                           InsertMontorStatus.setString(16, mdmVersion)
                           InsertMontorStatus.setString(17, osDisplay)
@@ -281,8 +286,10 @@ object YjHighRiskMain extends Constants {
                           InsertMontorStatus.setString(10, value)
                           InsertMontorStatus.setString(11, "") //系统异常详情不用展示
                           InsertMontorStatus.setInt(12, a)
-                          InsertMontorStatus.setString(13, time)
-                          InsertMontorStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                          //InsertMontorStatus.setString(13, time)
+                          //InsertMontorStatus.setString(14, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date))
+                          InsertMontorStatus.setString(13, report_time)
+                          InsertMontorStatus.setString(14, time)
                           InsertMontorStatus.setString(15, platformVersion)
                           InsertMontorStatus.setString(16, mdmVersion)
                           InsertMontorStatus.setString(17, osDisplay)
@@ -361,7 +368,7 @@ object YjHighRiskMain extends Constants {
                       if(userid.toInt==userId&&history==0&&istatus==2) {
                         val eventTime = Utc2Local.UTCToCST(createdAt)
                         //添加维修场景和刷动态码场景
-                        val code_time=getBrushCodeTime(deviceId)
+                        val code_time=getBrushCodeTime(deviceId,changeTime)
                         //大于刷机码时间的最近一次登录时间
                         val plat_login_time=getPlatLoginTime(deviceId,userId,code_time)
                         val bool = isNotCodeTime(code_time, changeTime, plat_login_time)
@@ -629,6 +636,10 @@ object YjHighRiskMain extends Constants {
           val createdDate = data.getString("Value")
           obj.put("createdDate", createdDate)
         }
+        if (data.getString("Name") == "reportDate") {
+          val reportDate = data.getString("Value")
+          obj.put("reportDate", reportDate)
+        }
       }
     }
     obj
@@ -827,9 +838,9 @@ object YjHighRiskMain extends Constants {
 
 
   //通过设备id获取扫码时间
-  def getBrushCodeTime(deviceId: String): String = {
+  def getBrushCodeTime(deviceId: String,change_time:String): String = {
     var time = ""
-    val quModelSql = "SELECT   date_format(used_date, '%Y-%m-%d %H:%i:%s') AS  used_date from  brush_code where device_id =  '" + deviceId + "'"  + " ORDER BY used_date desc limit 1"
+    val quModelSql = "SELECT   date_format(used_date, '%Y-%m-%d %H:%i:%s') AS  used_date from  brush_code where status=1 and  device_id =  '" + deviceId + "'" +" and  used_date< '" + change_time + "' " +  " ORDER BY used_date desc limit 1"
     val results1: ResultSet = MysqlUtils.select5(quModelSql)
     while (results1.next()) {
       time = results1.getString(1)
@@ -837,7 +848,6 @@ object YjHighRiskMain extends Constants {
 
     time
   }
-
 
 //根据设备号和用户id和时间查询出扫码后最近一次登录智通云平台的数据
   def getPlatLoginTime(deviceId: String, userId: Int,login_time:String): String = {

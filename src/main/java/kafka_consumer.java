@@ -18,7 +18,7 @@ public class kafka_consumer {
     public static void kafka_consumer(){
         Properties props = new Properties();
         props.put("bootstrap.servers", brokerList);
-        props.put("group.id", "test-consumer-group-9024333734834");
+        props.put("group.id", "test-consumer-group-902433373483478");
         props.put("enable.auto.commit", "false");
         props.put("auto.offset.reset", "latest");//latest  earliest
 
